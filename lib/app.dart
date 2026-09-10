@@ -23,10 +23,19 @@ class MyTicketsApp extends ConsumerWidget {
       routerConfig: AppRouter.router,
       builder: (context, child) => AppLocaleScope(
         languageCode: languageCode,
-        child: Column(
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            const ConnectivityBanner(),
-            Expanded(child: child ?? const SizedBox.shrink()),
+            child ?? const SizedBox.shrink(),
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: ConnectivityBanner(),
+              ),
+            ),
           ],
         ),
       ),
