@@ -1,0 +1,11 @@
+﻿{
+  buildCommand: npm run vercel-build,
+  outputDirectory: build/web,
+  framework: null,
+  rewrites: [
+    {
+      source: /(.*),
+      destination: /index.html
+    }
+  ]
+}
