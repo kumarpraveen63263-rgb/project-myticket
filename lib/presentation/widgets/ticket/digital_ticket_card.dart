@@ -7,6 +7,7 @@ import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/date_utils.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/models/ticket_model.dart';
+import '../common/cached_image_widget.dart';
 import 'qr_display_widget.dart';
 
 class DigitalTicketCard extends StatelessWidget {
@@ -42,16 +43,15 @@ class DigitalTicketCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (booking.type != BookingType.metro)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(AppDimensions.radiusLarge),
-              ),
-              child: CachedNetworkImage(
-                imageUrl: booking.imageUrl,
-                height: 140,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
+            CachedImageWidget(
+              imageUrl: booking.imageUrl,
+              height: 140,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              borderRadius: 0,
+              category: booking.type == BookingType.movie
+                  ? ImageCategory.movie
+                  : ImageCategory.event,
             ),
           Padding(
             padding: const EdgeInsets.all(AppDimensions.paddingMedium),

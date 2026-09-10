@@ -58,18 +58,29 @@ class CachedImageWidget extends StatelessWidget {
       return _buildFallback();
     }
 
-    Widget image = CachedNetworkImage(
-      imageUrl: imageUrl,
-      width: width,
-      height: height,
-      fit: fit,
-      placeholder: (context, url) => ShimmerBox(
-        width: width ?? double.infinity,
-        height: height ?? double.infinity,
-        radius: borderRadius,
-      ),
-      errorWidget: (context, url, error) => _buildFallback(),
-    );
+    Widget image;
+    if (imageUrl.startsWith('assets/')) {
+      image = Image.asset(
+        imageUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        errorBuilder: (context, error, stackTrace) => _buildFallback(),
+      );
+    } else {
+      image = CachedNetworkImage(
+        imageUrl: imageUrl,
+        width: width,
+        height: height,
+        fit: fit,
+        placeholder: (context, url) => ShimmerBox(
+          width: width ?? double.infinity,
+          height: height ?? double.infinity,
+          radius: borderRadius,
+        ),
+        errorWidget: (context, url, error) => _buildFallback(),
+      );
+    }
 
     if (borderRadius > 0) {
       image = ClipRRect(

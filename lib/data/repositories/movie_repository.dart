@@ -323,11 +323,24 @@ class MovieRepository {
     required double paytmPrice,
     required List<String> cast,
   }) {
+    final localAssetMap = <String, String>{
+      'kalki': 'assets/images/kalki.jpg',
+      'leo': 'assets/images/leo.jpg',
+      'jawan': 'assets/images/jawan.jpg',
+      'animal': 'assets/images/animal.jpg',
+      'pushpa2': 'assets/images/pushpa.jpg',
+      'fighter': 'assets/images/flighter.jpg',
+      'devara': 'assets/images/devra.jpg',
+    };
+
+    final poster = localAssetMap[seed] ?? 'https://picsum.photos/seed/$seed/300/450';
+    final banner = localAssetMap[seed] ?? 'https://picsum.photos/seed/${seed}banner/800/450';
+
     return MovieModel(
       id: id,
       title: title,
-      posterUrl: 'https://picsum.photos/seed/$seed/300/450',
-      bannerUrl: 'https://picsum.photos/seed/${seed}banner/800/450',
+      posterUrl: poster,
+      bannerUrl: banner,
       rating: rating,
       votes: votes,
       duration: duration,

@@ -18,7 +18,7 @@ class BookingRepository {
       type: BookingType.movie,
       referenceId: 'm001',
       title: 'Kalki 2898 AD',
-      imageUrl: 'https://picsum.photos/seed/kalki/300/450',
+      imageUrl: 'assets/images/kalki.jpg',
       venue: 'PVR Ampa Skywalk, Aminjikarai',
       date: DateTime.now().add(const Duration(days: 2)),
       time: '8:00 PM',

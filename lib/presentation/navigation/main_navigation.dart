@@ -6,7 +6,9 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_dimensions.dart';
 import '../../core/theme/app_typography.dart';
 
-/// Bottom-nav shell with responsive max-width support for web & mobile.
+/// Bottom-nav shell. The [StatefulNavigationShell] is the single source of
+/// truth for the active tab index and owns one persistent navigator + state
+/// per branch (via the underlying IndexedStack).
 class MainNavigation extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
 
@@ -58,12 +60,7 @@ class MainNavigation extends StatelessWidget {
     final items = _items(context);
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1000),
-          child: navigationShell,
-        ),
-      ),
+      body: navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -78,21 +75,16 @@ class MainNavigation extends StatelessWidget {
         ),
         child: SafeArea(
           top: false,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: SizedBox(
-                height: AppDimensions.bottomNavHeight,
-                child: Row(
-                  children: List.generate(items.length, (index) {
-                    return _NavButton(
-                      item: items[index],
-                      isActive: index == navigationShell.currentIndex,
-                      onTap: () => _onTap(index),
-                    );
-                  }),
-                ),
-              ),
+          child: SizedBox(
+            height: AppDimensions.bottomNavHeight,
+            child: Row(
+              children: List.generate(items.length, (index) {
+                return _NavButton(
+                  item: items[index],
+                  isActive: index == navigationShell.currentIndex,
+                  onTap: () => _onTap(index),
+                );
+              }),
             ),
           ),
         ),

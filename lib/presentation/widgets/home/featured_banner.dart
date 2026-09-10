@@ -5,6 +5,7 @@ import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/theme/app_typography.dart';
+import '../common/cached_image_widget.dart';
 import '../common/shimmer_loader.dart';
 
 class FeaturedBannerItem {
@@ -174,23 +175,11 @@ class _BannerSlide extends StatelessWidget {
           child: Stack(
             fit: StackFit.expand,
             children: [
-              CachedNetworkImage(
+              CachedImageWidget(
                 imageUrl: item.imageUrl,
                 fit: BoxFit.cover,
-                placeholder: (_, _) => ShimmerBox(
-                  width: double.infinity,
-                  height: height,
-                  radius: 0,
-                ),
-                errorWidget: (_, _, _) => const ColoredBox(
-                  color: AppColors.surfaceElevated,
-                  child: Center(
-                    child: Icon(
-                      Icons.image_outlined,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ),
+                borderRadius: 0,
+                category: ImageCategory.movie,
               ),
               const DecoratedBox(
                 decoration: BoxDecoration(

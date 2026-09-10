@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
+import '../common/cached_image_widget.dart';
 import '../common/shimmer_loader.dart';
 
 class MovieHeroBanner extends StatelessWidget {
@@ -27,22 +28,11 @@ class MovieHeroBanner extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                CachedNetworkImage(
+                CachedImageWidget(
                   imageUrl: bannerUrl,
                   fit: BoxFit.cover,
-                  placeholder: (_, _) => const ShimmerBox(
-                    width: double.infinity,
-                    height: 240,
-                    radius: 0,
-                  ),
-                  errorWidget: (_, _, _) => Container(
-                    color: AppColors.surfaceElevated,
-                    child: const Icon(
-                      Icons.movie_outlined,
-                      color: AppColors.textMuted,
-                      size: 48,
-                    ),
-                  ),
+                  borderRadius: 0,
+                  category: ImageCategory.movie,
                 ),
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -77,21 +67,13 @@ class MovieHeroBanner extends StatelessWidget {
                 ],
                 border: Border.all(color: Colors.white, width: 2),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppDimensions.radiusMedium - 2),
-                child: CachedNetworkImage(
-                  imageUrl: posterUrl,
-                  width: 105,
-                  height: 150,
-                  fit: BoxFit.cover,
-                  placeholder: (_, _) => const ShimmerBox(width: 105, height: 150),
-                  errorWidget: (_, _, _) => Container(
-                    width: 105,
-                    height: 150,
-                    color: AppColors.surfaceElevated,
-                    child: const Icon(Icons.movie_outlined, color: AppColors.textMuted),
-                  ),
-                ),
+              child: CachedImageWidget(
+                imageUrl: posterUrl,
+                width: 105,
+                height: 150,
+                fit: BoxFit.cover,
+                borderRadius: AppDimensions.radiusMedium - 2,
+                category: ImageCategory.movie,
               ),
             ),
           ),

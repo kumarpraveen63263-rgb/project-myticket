@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../data/models/movie_model.dart';
+import '../common/cached_image_widget.dart';
 import '../common/shimmer_loader.dart';
 
 class MovieCard extends StatelessWidget {
@@ -49,30 +50,14 @@ class MovieCard extends StatelessWidget {
                 // grid cell (width: double.infinity).
                 AspectRatio(
                   aspectRatio: 1 / _posterRatio,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(
-                      AppDimensions.radiusMedium,
-                    ),
-                    child: CachedNetworkImage(
-                      imageUrl: movie.posterUrl,
-                      width: double.infinity,
-                      height: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (_, _) => const ShimmerBox(
-                        width: double.infinity,
-                        height: double.infinity,
-                        radius: 0,
-                      ),
-                      errorWidget: (_, _, _) => const ColoredBox(
-                        color: AppColors.surfaceElevated,
-                        child: Center(
-                          child: Icon(
-                            Icons.movie_outlined,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                      ),
-                    ),
+                  child: CachedImageWidget(
+                    imageUrl: movie.posterUrl,
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    borderRadius: AppDimensions.radiusMedium,
+                    category: ImageCategory.movie,
+                    semanticLabel: movie.title,
                   ),
                 ),
                 Positioned(

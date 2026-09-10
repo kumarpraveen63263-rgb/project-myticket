@@ -18,6 +18,7 @@ import '../../../providers/offer_provider.dart';
 import '../../../providers/metro_favourites_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_text_field.dart';
+import '../../widgets/common/cached_image_widget.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
   CheckoutScreen({super.key});
@@ -185,14 +186,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusSmall),
-            child: CachedNetworkImage(
-              imageUrl: draft.imageUrl,
-              width: 60,
-              height: 80,
-              fit: BoxFit.cover,
-            ),
+          CachedImageWidget(
+            imageUrl: draft.imageUrl,
+            width: 60,
+            height: 80,
+            fit: BoxFit.cover,
+            borderRadius: AppDimensions.radiusSmall,
+            category: ImageCategory.movie,
           ),
           SizedBox(width: 12),
           Expanded(

@@ -14,6 +14,7 @@ import '../../../providers/ticket_provider.dart';
 import '../../widgets/common/app_badge.dart';
 import '../../widgets/common/app_empty_state.dart';
 import '../../widgets/common/app_error_widget.dart';
+import '../../widgets/common/cached_image_widget.dart';
 import '../../widgets/common/shimmer_loader.dart';
 
 class MyTicketsScreen extends ConsumerStatefulWidget {
@@ -181,21 +182,17 @@ class _TicketTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppDimensions.radiusSmall),
-              child: CachedNetworkImage(
-                imageUrl: booking.imageUrl,
-                width: 56,
-                height: 72,
-                fit: BoxFit.cover,
-                placeholder: (_, _) => const ShimmerBox(width: 56, height: 72),
-                errorWidget: (_, _, _) => Container(
-                  width: 56,
-                  height: 72,
-                  color: AppColors.surfaceElevated,
-                  child: Icon(Icons.confirmation_number_outlined, color: _accent),
-                ),
-              ),
+            CachedImageWidget(
+              imageUrl: booking.imageUrl,
+              width: 56,
+              height: 72,
+              fit: BoxFit.cover,
+              borderRadius: AppDimensions.radiusSmall,
+              category: booking.type == BookingType.movie
+                  ? ImageCategory.movie
+                  : booking.type == BookingType.event
+                      ? ImageCategory.event
+                      : ImageCategory.metro,
             ),
             const SizedBox(width: 12),
             Expanded(
