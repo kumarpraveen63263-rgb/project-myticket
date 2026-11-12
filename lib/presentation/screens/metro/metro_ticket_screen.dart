@@ -14,7 +14,7 @@ import '../../widgets/ticket/digital_ticket_card.dart';
 class MetroTicketScreen extends ConsumerWidget {
   final String bookingId;
 
-  MetroTicketScreen({super.key, required this.bookingId});
+  const MetroTicketScreen({super.key, required this.bookingId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,17 +25,18 @@ class MetroTicketScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => context.pop(),
-          icon: Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
         title: Text(context.tr('Metro Ticket')),
       ),
       body: bookingAsync.when(
-        loading: () => AppLoader(color: AppColors.accentMetro),
+        loading: () => const AppLoader(color: AppColors.accentMetro),
         error: (_, _) =>
             Center(child: Text(context.tr('Failed to load ticket'))),
         data: (booking) {
-          if (booking == null)
+          if (booking == null) {
             return Center(child: Text(context.tr('Ticket not found')));
+          }
           final validUntil = booking.createdAt.add(
             Duration(minutes: AppConstants.metroTicketValidMinutes),
           );

@@ -12,7 +12,7 @@ import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_text_field.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
-  EditProfileScreen({super.key});
+  const EditProfileScreen({super.key});
 
   @override
   ConsumerState<EditProfileScreen> createState() => _EditProfileScreenState();
@@ -22,6 +22,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
+  late final TextEditingController _phoneController;
 
   @override
   void initState() {
@@ -29,12 +30,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = ref.read(authProvider).user;
     _nameController = TextEditingController(text: user?.name ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
+    _phoneController =
+        TextEditingController(text: '+91 ${user?.phone ?? ''}');
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -59,14 +63,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => context.pop(),
-          icon: Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
         title: Text(context.tr('Edit Profile')),
       ),
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: EdgeInsets.all(AppDimensions.paddingMedium),
+          padding: const EdgeInsets.all(AppDimensions.paddingMedium),
           children: [
             Center(
               child: CircleAvatar(
@@ -80,30 +84,28 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 ),
               ),
             ),
-            SizedBox(height: AppDimensions.paddingLarge),
+            const SizedBox(height: AppDimensions.paddingLarge),
             AppTextField(
               controller: _nameController,
               labelText: 'Full Name',
               prefixIcon: Icons.person_outline_rounded,
               validator: ValidatorUtils.validateName,
             ),
-            SizedBox(height: AppDimensions.paddingMedium),
+            const SizedBox(height: AppDimensions.paddingMedium),
             AppTextField(
               labelText: 'Phone Number',
               prefixIcon: Icons.phone_outlined,
               enabled: false,
-              controller: TextEditingController(
-                text: '+91 ${user?.phone ?? ''}',
-              ),
+              controller: _phoneController,
             ),
-            SizedBox(height: AppDimensions.paddingMedium),
+            const SizedBox(height: AppDimensions.paddingMedium),
             AppTextField(
               controller: _emailController,
               labelText: 'Email (optional)',
               prefixIcon: Icons.mail_outline_rounded,
               validator: ValidatorUtils.validateEmail,
             ),
-            SizedBox(height: AppDimensions.paddingLarge),
+            const SizedBox(height: AppDimensions.paddingLarge),
             AppButton(label: 'Save Changes', onPressed: _save),
           ],
         ),

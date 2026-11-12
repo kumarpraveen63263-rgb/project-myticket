@@ -39,4 +39,32 @@ class UserModel {
       rewardPoints: rewardPoints ?? this.rewardPoints,
     );
   }
+
+  /// Serializes the user model to a Map for Firestore storage.
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'phone': phone,
+      'email': email,
+      'avatarUrl': avatarUrl,
+      'bookingsCount': bookingsCount,
+      'savedCount': savedCount,
+      'rewardPoints': rewardPoints,
+    };
+  }
+
+  /// Deserializes a user model from a Firestore document map.
+  factory UserModel.fromMap(Map<String, dynamic> map) {
+    return UserModel(
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? 'MyTickets User',
+      phone: map['phone'] as String? ?? '',
+      email: map['email'] as String?,
+      avatarUrl: map['avatarUrl'] as String?,
+      bookingsCount: map['bookingsCount'] as int? ?? 0,
+      savedCount: map['savedCount'] as int? ?? 0,
+      rewardPoints: map['rewardPoints'] as int? ?? 0,
+    );
+  }
 }

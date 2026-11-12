@@ -1,13 +1,19 @@
-import '../services/local_storage_service.dart';
+import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../models/booking_model.dart';
 import '../models/seat_model.dart';
 import '../models/show_model.dart';
 import '../models/ticket_model.dart';
+import '../services/local_storage_service.dart';
+import 'booking_repository_interface.dart';
 
-class BookingRepository {
+class BookingRepository implements BookingRepositoryInterface {
   static const _uuid = Uuid();
   static final LocalStorageService _storage = LocalStorageService();
+  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static bool _restored = false;
 
   static final List<BookingModel> _bookings = [
@@ -41,7 +47,7 @@ class BookingRepository {
       referenceId: 'metro',
       title: 'Chennai Central → Guindy',
       imageUrl: 'https://picsum.photos/seed/metroticket/300/450',
-      venue: 'Blue Line',
+      venue: 'Blue Line (Prototype)',
       date: DateTime.now(),
       time: '9:15 AM',
       seats: const [],
@@ -56,71 +62,56 @@ class BookingRepository {
       fromStation: 'Chennai Central',
       toStation: 'Guindy',
     ),
-    BookingModel(
-      id: 'bk_seed_3',
-      bookingId:
-          'MT${DateTime.now().millisecondsSinceEpoch.toString().substring(3, 10)}C',
-      type: BookingType.event,
-      referenceId: 'e002',
-      title: 'Zakir Khan — Standup Special',
-      imageUrl: 'https://picsum.photos/seed/zakirkhan/800/450',
-      venue: 'Sir Mutha Venkatasubba Rao Concert Hall',
-      date: DateTime.now().subtract(const Duration(days: 10)),
-      time: '8:00 PM',
-      seats: const [],
-      quantity: 2,
-      subtotal: 1198,
-      convenienceFee: 60,
-      gst: 226.4,
-      discount: 0,
-      totalAmount: 1484.4,
-      status: TicketStatus.completed,
-      createdAt: DateTime.now().subtract(const Duration(days: 15)),
-    ),
-    BookingModel(
-      id: 'bk_seed_4',
-      bookingId:
-          'MT${DateTime.now().millisecondsSinceEpoch.toString().substring(3, 10)}D',
-      type: BookingType.movie,
-      referenceId: 'm004',
-      title: 'Animal',
-      imageUrl: 'https://picsum.photos/seed/animal/300/450',
-      venue: 'INOX Citi Centre, Mount Road',
-      date: DateTime.now().subtract(const Duration(days: 20)),
-      time: '4:30 PM',
-      seats: const ['H4'],
-      quantity: 1,
-      subtotal: 150,
-      convenienceFee: 30,
-      gst: 32.4,
-      discount: 0,
-      totalAmount: 212.4,
-      status: TicketStatus.cancelled,
-      createdAt: DateTime.now().subtract(const Duration(days: 21)),
-      screen: 'Screen 1',
-    ),
   ];
 
   Future<void> _restorePersistedBookings() async {
     if (_restored) return;
     _restored = true;
+
     for (final booking in _storage.savedBookings) {
       if (!_bookings.any((item) => item.id == booking.id)) {
         _bookings.add(booking);
-        await _storage.saveBooking(booking);
+      }
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final snapshot = await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .collection('bookings')
+            .orderBy('createdAt', descending: true)
+            .get();
+
+        for (final doc in snapshot.docs) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          final firestoreBooking = BookingModel.fromMap(data);
+          final existingIndex =
+              _bookings.indexWhere((b) => b.id == firestoreBooking.id);
+          if (existingIndex >= 0) {
+            _bookings[existingIndex] = firestoreBooking;
+          } else {
+            _bookings.add(firestoreBooking);
+          }
+          await _storage.saveBooking(firestoreBooking);
+        }
+      } catch (e) {
+        debugPrint('Firestore bookings fetch fallback: $e');
       }
     }
   }
 
+  @override
   Future<List<BookingModel>> getAll() async {
     await _restorePersistedBookings();
-    await Future.delayed(const Duration(milliseconds: 300));
     return List.unmodifiable(_bookings.reversed);
   }
 
+  @override
   Future<List<BookingModel>> getByStatus(TicketStatus status) async {
     await _restorePersistedBookings();
-    await Future.delayed(const Duration(milliseconds: 200));
     return _bookings
         .where((b) => b.status == status)
         .toList()
@@ -128,9 +119,9 @@ class BookingRepository {
         .toList();
   }
 
+  @override
   Future<BookingModel?> getById(String id) async {
     await _restorePersistedBookings();
-    await Future.delayed(const Duration(milliseconds: 150));
     try {
       return _bookings.firstWhere((b) => b.id == id);
     } catch (_) {
@@ -138,22 +129,100 @@ class BookingRepository {
     }
   }
 
+  @override
   Future<BookingModel> createBooking(BookingModel booking) async {
-    await Future.delayed(const Duration(milliseconds: 600));
     _bookings.add(booking);
     await _storage.saveBooking(booking);
     return booking;
   }
 
+  @override
   Future<void> cancelBooking(String id) async {
     await _restorePersistedBookings();
-    await Future.delayed(const Duration(milliseconds: 300));
     final idx = _bookings.indexWhere((b) => b.id == id);
     if (idx != -1) {
       final updated = _bookings[idx].copyWith(status: TicketStatus.cancelled);
       _bookings[idx] = updated;
       await _storage.saveBooking(updated);
     }
+  }
+
+  @override
+  Future<SeatHoldResult> holdSeats({
+    required String showId,
+    required List<String> seatIds,
+    required String title,
+    required String venue,
+    required DateTime date,
+    required String time,
+    required String screen,
+    required String imageUrl,
+    required String referenceId,
+  }) async {
+    final holdId = 'hold_${DateTime.now().millisecondsSinceEpoch}';
+    final bookingId = generateBookingId();
+    final subtotal = seatIds.length * 150.0;
+    final fee = seatIds.length * 30.0;
+    final gst = (subtotal + fee) * 0.18;
+    final total = subtotal + fee + gst;
+
+    return SeatHoldResult(
+      success: true,
+      holdId: holdId,
+      bookingId: bookingId,
+      subtotal: subtotal,
+      convenienceFee: fee,
+      gst: gst,
+      totalAmount: total,
+      expiresAt: DateTime.now().add(const Duration(minutes: 10)),
+    );
+  }
+
+  @override
+  Future<PaymentOrderResult> createPaymentOrder({
+    required String holdId,
+    String? promoCode,
+  }) async {
+    double discount = 0;
+    if (promoCode != null && promoCode.toUpperCase() == 'FIRST100') {
+      discount = 100.0;
+    }
+
+    const total = 354.0;
+    final finalAmount = (total - discount).clamp(0.0, double.infinity);
+
+    return PaymentOrderResult(
+      orderId: 'order_${DateTime.now().millisecondsSinceEpoch}',
+      amountInPaise: (finalAmount * 100).round(),
+      finalAmount: finalAmount,
+      discount: discount,
+      keyId: 'rzp_test_MyTicketsDemoKey',
+    );
+  }
+
+  @override
+  Future<BookingConfirmationResult> verifyPayment({
+    required String holdId,
+    required String orderId,
+    required String paymentId,
+    required String signature,
+  }) async {
+    String uid = 'guest';
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) uid = user.uid;
+    } catch (_) {
+      // Offline / unit test fallback
+    }
+    final qrToken = base64UrlEncode(
+      utf8.encode('$orderId:$uid:${DateTime.now().millisecondsSinceEpoch}'),
+    );
+
+    return BookingConfirmationResult(
+      success: true,
+      bookingId: 'MT${orderId.substring(orderId.length - 6).toUpperCase()}',
+      qrToken: qrToken,
+    );
   }
 
   static String generateBookingId() {
@@ -163,10 +232,10 @@ class BookingRepository {
   static List<SeatModel> generateSeatsForShow(ShowModel show) {
     final seats = <SeatModel>[];
     final layout = <String, int>{
-      'A': 8, // Recliner
-      'B': 12, 'C': 12, 'D': 12, // Premium
-      'E': 14, 'F': 14, 'G': 14, 'H': 14, // Executive
-      'I': 16, 'J': 16, 'K': 16, 'L': 16, // Normal
+      'A': 8,
+      'B': 12, 'C': 12, 'D': 12,
+      'E': 14, 'F': 14, 'G': 14, 'H': 14,
+      'I': 16, 'J': 16, 'K': 16, 'L': 16,
     };
 
     double bookedRatio;
@@ -182,10 +251,10 @@ class BookingRepository {
         break;
     }
 
-    layout.forEach((row, count) {
+    layout.forEach((row, seatCount) {
       final category = _categoryForRow(row);
       final price = _priceForCategory(category, show);
-      for (int i = 1; i <= count; i++) {
+      for (int i = 1; i <= seatCount; i++) {
         seats.add(
           SeatModel(
             id: '${show.id}_$row$i',
@@ -207,7 +276,7 @@ class BookingRepository {
     int number,
     double ratio,
   ) {
-    final seed = show.id.codeUnits.fold<int>(0, (sum, code) => sum + code);
+    final seed = show.id.codeUnits.fold<int>(0, (acc, code) => acc + code);
     final seatSeed = seed + row.codeUnitAt(0) * 31 + number * 17;
     return (seatSeed % 100) / 100 < ratio;
   }

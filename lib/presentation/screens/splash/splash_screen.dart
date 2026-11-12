@@ -22,16 +22,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _navigateNext() async {
-    await Future.delayed(const Duration(milliseconds: 2500));
+    await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
-    final storage = ref.read(localStorageServiceProvider);
-    if (!storage.hasSeenOnboarding) {
-      context.go('/onboarding');
-    } else if (ref.read(authProvider).isLoggedIn || storage.isLoggedIn) {
-      context.go('/home');
-    } else {
-      context.go('/login');
+    try {
+      final storage = ref.read(localStorageServiceProvider);
+      if (!storage.hasSeenOnboarding) {
+        context.go('/onboarding');
+      } else if (ref.read(authProvider).isLoggedIn || storage.isLoggedIn) {
+        context.go('/home');
+      } else {
+        context.go('/login');
+      }
+    } catch (e) {
+      debugPrint('Navigation error: $e');
+      if (mounted) context.go('/home');
     }
   }
 
@@ -59,22 +64,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 )
                 .animate()
                 .scale(
-                  duration: 700.ms,
+                  duration: 600.ms,
                   curve: Curves.easeOutBack,
                   begin: const Offset(0.4, 0.4),
                   end: const Offset(1, 1),
                 )
-                .fadeIn(duration: 500.ms),
+                .fadeIn(duration: 400.ms),
             const SizedBox(height: 24),
             Text(AppConstants.appName, style: AppTypography.displayMedium)
-                .animate(delay: 300.ms)
-                .fadeIn(duration: 600.ms)
+                .animate(delay: 200.ms)
+                .fadeIn(duration: 400.ms)
                 .slideY(begin: 0.2, end: 0),
             const SizedBox(height: 8),
             Text(
               AppConstants.appTagline,
               style: AppTypography.bodyMedium,
-            ).animate(delay: 600.ms).fadeIn(duration: 600.ms),
+            ).animate(delay: 400.ms).fadeIn(duration: 400.ms),
           ],
         ),
       ),

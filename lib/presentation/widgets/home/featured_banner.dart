@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/theme/app_typography.dart';
 import '../common/cached_image_widget.dart';
-import '../common/shimmer_loader.dart';
 
 class FeaturedBannerItem {
   final String imageUrl;

@@ -1,9 +1,7 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../common/cached_image_widget.dart';
-import '../common/shimmer_loader.dart';
 
 class MovieHeroBanner extends StatelessWidget {
   final String bannerUrl;

@@ -16,7 +16,7 @@ import '../../widgets/common/app_empty_state.dart';
 import '../../widgets/metro/metro_map_widget.dart';
 
 class MetroRouteScreen extends ConsumerWidget {
-  MetroRouteScreen({super.key});
+  const MetroRouteScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -122,9 +122,10 @@ class MetroRouteScreen extends ConsumerWidget {
                 Row(
                   children: [
                     _stepperButton(Icons.remove_rounded, () {
-                      if (passengers > 1)
+                      if (passengers > 1) {
                         ref.read(metroPassengerCountProvider.notifier).state =
                             passengers - 1;
+                      }
                     }),
                     Expanded(
                       child: Text(
@@ -134,9 +135,10 @@ class MetroRouteScreen extends ConsumerWidget {
                       ),
                     ),
                     _stepperButton(Icons.add_rounded, () {
-                      if (passengers < AppConstants.maxMetroPassengers)
+                      if (passengers < AppConstants.maxMetroPassengers) {
                         ref.read(metroPassengerCountProvider.notifier).state =
                             passengers + 1;
+                      }
                     }),
                   ],
                 ),

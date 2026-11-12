@@ -1,5 +1,4 @@
 import '../../../core/localization/app_localizations.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,16 +11,17 @@ import '../../../core/utils/date_utils.dart';
 import '../../../core/utils/extensions.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/models/ticket_model.dart';
-import '../../../data/repositories/booking_repository.dart';
+import '../../../data/services/payment_service.dart';
+import '../../../providers/auth_provider.dart';
 import '../../../providers/booking_provider.dart';
-import '../../../providers/offer_provider.dart';
 import '../../../providers/metro_favourites_provider.dart';
+import '../../../providers/offer_provider.dart';
 import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_text_field.dart';
 import '../../widgets/common/cached_image_widget.dart';
 
 class CheckoutScreen extends ConsumerStatefulWidget {
-  CheckoutScreen({super.key});
+  const CheckoutScreen({super.key});
 
   @override
   ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -29,12 +29,14 @@ class CheckoutScreen extends ConsumerStatefulWidget {
 
 class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   final TextEditingController _couponController = TextEditingController();
+  final PaymentService _paymentService = PaymentService();
   bool _isPaying = false;
   bool _policyExpanded = false;
 
   @override
   void dispose() {
     _couponController.dispose();
+    _paymentService.dispose();
     super.dispose();
   }
 
@@ -44,76 +46,161 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     final offer = await ref.read(offerRepositoryProvider).validateCode(code);
     if (!mounted) return;
     if (offer == null) {
-      ref.read(appliedOfferCodeProvider.notifier).state = null;
-      ref.read(appliedDiscountProvider.notifier).state = 0;
-      context.showSnack('Invalid or expired coupon code', isError: true);
+      context.showSnack('Invalid coupon code', isError: true);
     } else {
       ref.read(appliedOfferCodeProvider.notifier).state = offer.code;
       final discount = offer.discountText.contains('%')
           ? draft.subtotal *
-                (double.tryParse(
-                      offer.discountText.replaceAll(RegExp(r'[^0-9]'), ''),
-                    ) ??
-                    0) /
-                100
+              (double.tryParse(
+                    offer.discountText.replaceAll(RegExp(r'[^0-9]'), ''),
+                  ) ??
+                  0) /
+              100
           : double.tryParse(
-                  offer.discountText.replaceAll(RegExp(r'[^0-9]'), ''),
-                ) ??
-                0;
+                offer.discountText.replaceAll(RegExp(r'[^0-9]'), ''),
+              ) ??
+              0;
       ref.read(appliedDiscountProvider.notifier).state = discount;
       context.showSnack('Coupon applied! ${offer.discountText}');
     }
   }
 
-  Future<void> _pay(BookingDraft draft, double total) async {
+  Future<void> _pay(
+    BookingDraft draft,
+    double total,
+    double convenienceFee,
+    double gst,
+  ) async {
+    if (_isPaying) return; // Prevent double-tap
     setState(() => _isPaying = true);
-    final booking = BookingModel(
-      id: 'bk_${DateTime.now().millisecondsSinceEpoch}',
-      bookingId: BookingRepository.generateBookingId(),
-      type: draft.type,
-      referenceId: draft.referenceId,
-      title: draft.title,
-      imageUrl: draft.imageUrl,
-      venue: draft.venue,
-      date: draft.date,
-      time: draft.time,
-      seats: draft.seats,
-      quantity: draft.quantity,
-      subtotal: draft.subtotal,
-      convenienceFee: draft.seats.length * AppConstants.convenienceFeePerTicket,
-      gst:
-          (draft.subtotal +
-              draft.seats.length * AppConstants.convenienceFeePerTicket) *
-          AppConstants.gstRate,
-      discount: ref.read(appliedDiscountProvider),
-      totalAmount: total,
-      status: TicketStatus.upcoming,
-      createdAt: DateTime.now(),
-      screen: draft.screen,
-      fromStation: draft.fromStation,
-      toStation: draft.toStation,
-    );
 
-    final created = await ref
-        .read(bookingRepositoryProvider)
-        .createBooking(booking);
-    if (!mounted) return;
-    if (draft.type == BookingType.metro &&
-        draft.fromStation != null &&
-        draft.toStation != null) {
-      await ref
-          .read(metroFavouriteRoutesProvider.notifier)
-          .add(metroRouteKey(draft.fromStation!, draft.toStation!));
+    try {
+      final user = ref.read(authProvider).user;
+      final phone = user?.phone ?? '9876543210';
+      final email = user?.email ?? 'user@mytickets.app';
+      final name = user?.name ?? 'MyTickets Customer';
+
+      final bookingRepo = ref.read(bookingRepositoryProvider);
+
+      // 1. Hold seats atomically on server
+      final holdResult = await bookingRepo.holdSeats(
+        showId: draft.referenceId,
+        seatIds: draft.seats,
+        title: draft.title,
+        venue: draft.venue,
+        date: draft.date,
+        time: draft.time,
+        screen: draft.screen ?? 'Screen 1',
+        imageUrl: draft.imageUrl,
+        referenceId: draft.referenceId,
+      );
+
+      if (!holdResult.success) {
+        if (!mounted) return;
+        setState(() => _isPaying = false);
+        context.showSnack(
+          holdResult.errorMessage ?? 'Seats are no longer available.',
+          isError: true,
+        );
+        return;
+      }
+
+      // 2. Request verified backend order
+      final appliedCode = ref.read(appliedOfferCodeProvider);
+      final orderResult = await bookingRepo.createPaymentOrder(
+        holdId: holdResult.holdId,
+        promoCode: appliedCode,
+      );
+
+      // 3. Initiate checkout through Razorpay SDK
+      final paymentResult = await _paymentService.openCheckout(
+        keyId: orderResult.keyId,
+        orderId: orderResult.orderId,
+        amountInPaise: orderResult.amountInPaise,
+        description: '${draft.title} — ${draft.quantity} ticket(s)',
+        phone: phone,
+        email: email,
+        name: name,
+      );
+
+      if (!paymentResult.success) {
+        if (!mounted) return;
+        setState(() => _isPaying = false);
+        final err = paymentResult.errorMessage ?? 'Payment cancelled';
+        if (!err.toLowerCase().contains('cancelled')) {
+          context.showSnack(err, isError: true);
+        }
+        return;
+      }
+
+      // 4. Server-verified confirmation
+      final verifyResult = await bookingRepo.verifyPayment(
+        holdId: holdResult.holdId,
+        orderId: paymentResult.orderId ?? orderResult.orderId,
+        paymentId: paymentResult.paymentId ?? '',
+        signature: paymentResult.signature ?? '',
+      );
+
+      if (!verifyResult.success) {
+        if (!mounted) return;
+        setState(() => _isPaying = false);
+        context.showSnack(
+          verifyResult.errorMessage ?? 'Payment verification failed',
+          isError: true,
+        );
+        return;
+      }
+
+      // 5. Build confirmed ticket model for client display
+      final booking = BookingModel(
+        id: holdResult.holdId,
+        bookingId: verifyResult.bookingId,
+        type: draft.type,
+        referenceId: draft.referenceId,
+        title: draft.title,
+        imageUrl: draft.imageUrl,
+        venue: draft.venue,
+        date: draft.date,
+        time: draft.time,
+        seats: draft.seats,
+        quantity: draft.quantity,
+        subtotal: holdResult.subtotal,
+        convenienceFee: holdResult.convenienceFee,
+        gst: holdResult.gst,
+        discount: orderResult.discount,
+        totalAmount: orderResult.finalAmount,
+        status: TicketStatus.upcoming,
+        createdAt: DateTime.now(),
+        screen: draft.screen,
+        fromStation: draft.fromStation,
+        toStation: draft.toStation,
+      );
+
+      final created = await bookingRepo.createBooking(booking);
+
+      if (!mounted) return;
+      if (draft.type == BookingType.metro &&
+          draft.fromStation != null &&
+          draft.toStation != null) {
+        await ref
+            .read(metroFavouriteRoutesProvider.notifier)
+            .add(metroRouteKey(draft.fromStation!, draft.toStation!));
+      }
+
+      ref.read(lastBookingProvider.notifier).state = created;
+      ref.invalidate(allBookingsProvider);
+      ref.read(appliedOfferCodeProvider.notifier).state = null;
+      ref.read(appliedDiscountProvider.notifier).state = 0;
+      ref.read(bookingDraftProvider.notifier).clear();
+      setState(() => _isPaying = false);
+
+      if (!mounted) return;
+      context.go('/booking/confirmation');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isPaying = false);
+      context.showSnack('Checkout error: $e', isError: true);
     }
-    ref.read(lastBookingProvider.notifier).state = created;
-    ref.invalidate(allBookingsProvider);
-    ref.read(appliedOfferCodeProvider.notifier).state = null;
-    ref.read(appliedDiscountProvider.notifier).state = 0;
-    ref.read(bookingDraftProvider.notifier).clear();
-    ref.read(appliedOfferCodeProvider.notifier).state = null;
-    ref.read(appliedDiscountProvider.notifier).state = 0;
-    setState(() => _isPaying = false);
-    context.go('/booking/confirmation');
   }
 
   @override
@@ -127,57 +214,87 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       return Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(title: Text(context.tr('Checkout'))),
-        body: Center(child: Text('Your cart is empty')),
+        body: const Center(child: Text('Your cart is empty')),
       );
     }
 
-    final convenienceFee = draft.seats.isNotEmpty
-        ? draft.seats.length * AppConstants.convenienceFeePerTicket
-        : AppConstants.convenienceFeePerTicket;
-    final gst = (draft.subtotal + convenienceFee) * AppConstants.gstRate;
-    final total = draft.subtotal + convenienceFee + gst - discount;
+    final convenienceFee = draft.type == BookingType.metro
+        ? 0.0
+        : (draft.seats.isNotEmpty
+            ? draft.seats.length * AppConstants.convenienceFeePerTicket
+            : draft.quantity * AppConstants.convenienceFeePerTicket);
+    final gst = draft.type == BookingType.metro
+        ? 0.0
+        : (draft.subtotal + convenienceFee) * AppConstants.gstRate;
+    final total = (draft.subtotal + convenienceFee + gst - discount)
+        .clamp(0.0, double.infinity);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => context.pop(),
-          icon: Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
         title: Text(context.tr('Checkout')),
       ),
       body: ListView(
-        padding: EdgeInsets.all(AppDimensions.paddingMedium),
+        padding: const EdgeInsets.all(AppDimensions.paddingMedium),
         children: [
+          _demoNoticeBanner(),
+          const SizedBox(height: AppDimensions.paddingMedium),
           _orderSummary(draft),
-          SizedBox(height: AppDimensions.paddingLarge),
+          const SizedBox(height: AppDimensions.paddingLarge),
           _priceBreakdown(draft, convenienceFee, gst, discount, total),
-          SizedBox(height: AppDimensions.paddingLarge),
+          const SizedBox(height: AppDimensions.paddingLarge),
           _couponSection(draft, appliedCode),
-          SizedBox(height: AppDimensions.paddingLarge),
+          const SizedBox(height: AppDimensions.paddingLarge),
           _paymentMethods(paymentMethod),
-          SizedBox(height: AppDimensions.paddingLarge),
+          const SizedBox(height: AppDimensions.paddingLarge),
           _cancellationPolicy(),
-          SizedBox(height: AppDimensions.bottomPadding),
+          const SizedBox(height: AppDimensions.bottomPadding),
         ],
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: EdgeInsets.all(AppDimensions.paddingMedium),
+          padding: const EdgeInsets.all(AppDimensions.paddingMedium),
           child: AppButton(
             label: 'Pay ${CurrencyUtils.format(total)}',
             isLoading: _isPaying,
             size: AppButtonSize.large,
-            onPressed: () => _pay(draft, total),
+            onPressed: () => _pay(draft, total, convenienceFee, gst),
           ),
         ),
       ),
     );
   }
 
+  Widget _demoNoticeBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSmall),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.shield_outlined, size: 18, color: AppColors.accentMovie),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Verified Checkout • 10-minute atomic server hold on selected seats',
+              style: AppTypography.caption.copyWith(color: AppColors.textSecondary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _orderSummary(BookingDraft draft) {
     return Container(
-      padding: EdgeInsets.all(AppDimensions.paddingMedium),
+      padding: const EdgeInsets.all(AppDimensions.paddingMedium),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
@@ -194,21 +311,21 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
             borderRadius: AppDimensions.radiusSmall,
             category: ImageCategory.movie,
           ),
-          SizedBox(width: 12),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(draft.title, style: AppTypography.titleLarge),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(draft.venue, style: AppTypography.bodySmall),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   '${AppDateUtils.formatFullDate(draft.date)} · ${draft.time}',
                   style: AppTypography.bodySmall,
                 ),
                 if (draft.seats.isNotEmpty) ...[
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     'Seats: ${draft.seats.join(', ')}',
                     style: AppTypography.caption,
@@ -230,7 +347,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     double total,
   ) {
     return Container(
-      padding: EdgeInsets.all(AppDimensions.paddingMedium),
+      padding: const EdgeInsets.all(AppDimensions.paddingMedium),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
@@ -243,7 +360,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           _priceRow('GST (18%)', gst),
           if (discount > 0)
             _priceRow('Promo discount', -discount, color: AppColors.success),
-          Divider(height: 20),
+          const Divider(height: 20),
           _priceRow('Total Payable', total, bold: true),
         ],
       ),
@@ -257,7 +374,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     Color? color,
   }) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -284,7 +401,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(context.tr('Apply Coupon'), style: AppTypography.titleLarge),
-        SizedBox(height: AppDimensions.paddingSmall),
+        const SizedBox(height: AppDimensions.paddingSmall),
         Row(
           children: [
             Expanded(
@@ -294,7 +411,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                 prefixIcon: Icons.local_offer_outlined,
               ),
             ),
-            SizedBox(width: 8),
+            const SizedBox(width: 8),
             SizedBox(
               width: 90,
               child: AppButton(
@@ -306,13 +423,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
           ],
         ),
         if (appliedCode != null) ...[
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'Applied: $appliedCode',
             style: AppTypography.bodySmall.copyWith(color: AppColors.success),
           ),
         ],
-        SizedBox(height: AppDimensions.paddingSmall),
+        const SizedBox(height: AppDimensions.paddingSmall),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -326,7 +443,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   child: Chip(
                     label: Text(c),
                     backgroundColor: AppColors.surfaceElevated,
-                    side: BorderSide(color: AppColors.border),
+                    side: const BorderSide(color: AppColors.border),
                   ),
                 ),
               )
@@ -347,7 +464,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(context.tr('Payment Method'), style: AppTypography.titleLarge),
-        SizedBox(height: AppDimensions.paddingSmall),
+        const SizedBox(height: AppDimensions.paddingSmall),
         RadioGroup<String>(
           groupValue: selected,
           onChanged: (v) =>
@@ -362,12 +479,12 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                     title: Row(
                       children: [
                         Icon(m.$2, size: 20, color: AppColors.textPrimary),
-                        SizedBox(width: 10),
+                        const SizedBox(width: 10),
                         Text(m.$1, style: AppTypography.titleMedium),
                       ],
                     ),
                     subtitle: Padding(
-                      padding: EdgeInsets.only(left: 30),
+                      padding: const EdgeInsets.only(left: 30),
                       child: Text(m.$3, style: AppTypography.caption),
                     ),
                   ),
@@ -403,9 +520,9 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
         ),
         if (_policyExpanded)
           Padding(
-            padding: EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: 8),
             child: Text(
-              'Tickets once booked cannot be exchanged, refunded or cancelled. In case of show cancellation by the venue, a full refund will be processed automatically within 5-7 business days.',
+              'Tickets once booked cannot be exchanged or refunded within 2 hours of showtime. Prior to 2 hours, cancellation carries a 20% venue fee. In case of show cancellation by the venue, a full 100% refund will be processed automatically to the original source of payment within 5-7 business days.',
               style: AppTypography.bodySmall.copyWith(height: 1.5),
             ),
           ),

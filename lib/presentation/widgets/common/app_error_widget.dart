@@ -9,7 +9,7 @@ class AppErrorWidget extends StatelessWidget {
   final String message;
   final VoidCallback? onRetry;
 
-  AppErrorWidget({
+  const AppErrorWidget({
     super.key,
     this.message = 'Something went wrong. Please try again.',
     this.onRetry,

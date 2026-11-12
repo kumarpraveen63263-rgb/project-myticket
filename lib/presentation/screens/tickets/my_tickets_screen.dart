@@ -1,5 +1,4 @@
 import '../../../core/localization/app_localizations.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -164,7 +163,11 @@ class _TicketTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
-      onTap: () => context.push('/ticket/${booking.id}'),
+      onTap: () => context.push(
+        booking.type == BookingType.metro
+            ? '/metro/ticket/${booking.id}'
+            : '/ticket/${booking.id}',
+      ),
       child: Container(
         padding: const EdgeInsets.all(AppDimensions.paddingMedium),
         decoration: BoxDecoration(

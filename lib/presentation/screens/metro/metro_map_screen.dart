@@ -15,7 +15,7 @@ import '../../widgets/metro/interactive_metro_map.dart';
 /// From/To selection and, once both are picked, a route summary that reuses
 /// the same fare/duration calculation as the rest of the booking flow.
 class MetroMapScreen extends ConsumerWidget {
-  MetroMapScreen({super.key});
+  const MetroMapScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,7 +23,7 @@ class MetroMapScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          Positioned.fill(child: InteractiveMetroMap(height: null)),
+          const Positioned.fill(child: InteractiveMetroMap(height: null)),
           Positioned(
             top: MediaQuery.of(context).padding.top + 12,
             left: AppDimensions.paddingMedium,
@@ -48,19 +48,19 @@ class MetroMapScreen extends ConsumerWidget {
 class _CircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  _CircleButton({required this.icon, required this.onTap});
+  const _CircleButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.surface.withValues(alpha: 0.92),
-      shape: CircleBorder(),
+      shape: const CircleBorder(),
       elevation: 4,
       child: InkWell(
         onTap: onTap,
-        customBorder: CircleBorder(),
+        customBorder: const CircleBorder(),
         child: Padding(
-          padding: EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
           child: Icon(icon, color: AppColors.textPrimary, size: 22),
         ),
       ),
@@ -70,7 +70,7 @@ class _CircleButton extends StatelessWidget {
 
 class _RouteSheet extends ConsumerWidget {
   final ScrollController scrollController;
-  _RouteSheet({required this.scrollController});
+  const _RouteSheet({required this.scrollController});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

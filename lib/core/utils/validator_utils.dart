@@ -2,12 +2,16 @@ class ValidatorUtils {
   ValidatorUtils._();
 
   static String? validatePhone(String? value) {
-    if (value == null || value.trim().isEmpty)
+    if (value == null || value.trim().isEmpty) {
       return 'Phone number is required';
+    }
     final digits = value.trim();
-    if (digits.length != 10) return 'Enter a valid 10-digit phone number';
-    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(digits))
+    if (digits.length != 10) {
+      return 'Enter a valid 10-digit phone number';
+    }
+    if (!RegExp(r'^[6-9]\d{9}$').hasMatch(digits)) {
       return 'Enter a valid Indian phone number';
+    }
     return null;
   }
 

@@ -15,7 +15,7 @@ import '../../widgets/home/event_card.dart';
 import '../../widgets/home/movie_card.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
-  SearchScreen({super.key});
+  const SearchScreen({super.key});
 
   @override
   ConsumerState<SearchScreen> createState() => _SearchScreenState();
@@ -42,49 +42,67 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final results = ref.watch(searchResultsProvider);
     final recent = ref.watch(recentSearchesProvider);
 
-    return SafeArea(
-      child: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(AppDimensions.paddingMedium),
-            child: Row(
-              children: [
-                Expanded(
-                  child: AppTextField(
-                    controller: _controller,
-                    hintText: 'Movies, Events, Metro...',
-                    autofocus: true,
-                    prefixIcon: Icons.search_rounded,
-                    suffixIcon: query.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.close_rounded, size: 18),
-                            onPressed: () {
-                              _controller.clear();
-                              ref.read(searchQueryProvider.notifier).state = '';
-                            },
-                          )
-                        : null,
-                    onChanged: (v) =>
-                        ref.read(searchQueryProvider.notifier).state = v,
-                    validator: null,
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppDimensions.paddingSmall,
+                AppDimensions.paddingMedium,
+                AppDimensions.paddingMedium,
+                AppDimensions.paddingMedium,
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/home');
+                      }
+                    },
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: AppTextField(
+                      controller: _controller,
+                      hintText: 'Movies, Events, Metro...',
+                      autofocus: true,
+                      prefixIcon: Icons.search_rounded,
+                      suffixIcon: query.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 18),
+                              onPressed: () {
+                                _controller.clear();
+                                ref.read(searchQueryProvider.notifier).state = '';
+                              },
+                            )
+                          : null,
+                      onChanged: (v) =>
+                          ref.read(searchQueryProvider.notifier).state = v,
+                      validator: null,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          _tabBar(tabIndex),
-          Expanded(
-            child: query.trim().isEmpty
-                ? _idleState(recent)
-                : results.isEmpty
-                ? AppEmptyState(
-                    icon: Icons.search_off_rounded,
-                    title: 'No results found',
-                    subtitle: 'Try a different keyword',
-                  )
-                : _resultsList(results, tabIndex),
-          ),
-        ],
+            _tabBar(tabIndex),
+            Expanded(
+              child: query.trim().isEmpty
+                  ? _idleState(recent)
+                  : results.isEmpty
+                  ? AppEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: 'No results found',
+                      subtitle: 'Try a different keyword',
+                    )
+                  : _resultsList(results, tabIndex),
+            ),
+          ],
+        ),
       ),
     );
   }

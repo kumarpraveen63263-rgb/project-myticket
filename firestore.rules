@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profiles: users can read their own profile, create on signup, update non-critical fields
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) 
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['bookingsCount', 'rewardPoints', 'isAdmin']);
+      allow delete: if false;
+
+      // User bookings: READ-ONLY for users. Writes MUST go through Cloud Functions (Admin SDK)
+      match /bookings/{bookingId} {
+        allow read: if isOwner(userId);
+        allow write: if false; // Only server (Cloud Functions) can create, update, or cancel bookings
+      }
+
+      // User notifications
+      match /notifications/{notificationId} {
+        allow read: if isOwner(userId);
+        allow update: if isOwner(userId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+        allow create, delete: if false; // Created by server on booking events
+      }
+    }
+
+    // Public catalog data (read-only for all, write-only for admins/server)
+    match /movies/{movieId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /shows/{showId} {
+      allow read: if true;
+      allow write: if false;
+
+      // Real-time seat availability
+      match /seats/{seatId} {
+        allow read: if true;
+        allow write: if false; // All holds & reservations must be executed via atomic Cloud Functions
+      }
+    }
+
+    match /theatres/{theatreId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /offers/{offerId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Audit logs & payment reconciliations
+    match /audit_logs/{logId} {
+      allow read, write: if false;
+    }
+    match /payment_orders/{orderId} {
+      allow read, write: if false;
+    }
+  }
+}

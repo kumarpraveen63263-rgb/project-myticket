@@ -14,7 +14,7 @@ import '../../widgets/ticket/digital_ticket_card.dart';
 class TicketDetailScreen extends ConsumerWidget {
   final String bookingId;
 
-  TicketDetailScreen({super.key, required this.bookingId});
+  const TicketDetailScreen({super.key, required this.bookingId});
 
   Color _accentFor(BookingType type) {
     switch (type) {
@@ -36,17 +36,18 @@ class TicketDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         leading: IconButton(
           onPressed: () => context.pop(),
-          icon: Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
         title: Text(context.tr('Ticket')),
       ),
       body: bookingAsync.when(
-        loading: () => AppLoader(),
+        loading: () => const AppLoader(),
         error: (_, _) =>
             Center(child: Text(context.tr('Failed to load ticket'))),
         data: (booking) {
-          if (booking == null)
+          if (booking == null) {
             return Center(child: Text(context.tr('Ticket not found')));
+          }
           final accent = _accentFor(booking.type);
           return ListView(
             padding: EdgeInsets.only(bottom: AppDimensions.paddingLarge),
@@ -64,8 +65,11 @@ class TicketDetailScreen extends ConsumerWidget {
                         icon: Icons.share_rounded,
                         variant: AppButtonVariant.outlined,
                         accentColor: accent,
-                        onPressed: () => Share.share(
-                          '${booking.title} — Booking ID: ${booking.bookingId}',
+                        onPressed: () => SharePlus.instance.share(
+                          ShareParams(
+                            text:
+                                '${booking.title} — Booking ID: ${booking.bookingId}',
+                          ),
                         ),
                       ),
                     ),

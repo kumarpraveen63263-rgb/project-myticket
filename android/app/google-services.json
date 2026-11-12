@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "323864835778",
+    "project_id": "mytick-app",
+    "storage_bucket": "mytick-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:323864835778:android:d8a74529c2ee15037cad5b",
+        "android_client_info": {
+          "package_name": "com.myticket.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXIKI9rKsaxINuuGDkSi8i8Nz0WpQ-QSc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

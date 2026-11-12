@@ -15,7 +15,7 @@ import '../../widgets/common/app_button.dart';
 class OtpScreen extends ConsumerStatefulWidget {
   final String phone;
 
-  OtpScreen({super.key, required this.phone});
+  const OtpScreen({super.key, required this.phone});
 
   @override
   ConsumerState<OtpScreen> createState() => _OtpScreenState();
@@ -64,15 +64,22 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     if (ok) {
       context.go('/home');
     } else {
-      context.showSnack('Invalid OTP. Please try again.', isError: true);
+      final error = ref.read(authProvider).error ?? 'Invalid OTP. Please try again.';
+      context.showSnack(error, isError: true);
       _otpController.clear();
     }
   }
 
-  void _resend() {
-    ref.read(authProvider.notifier).sendOtp(widget.phone);
+  Future<void> _resend() async {
+    final ok = await ref.read(authProvider.notifier).sendOtp(widget.phone);
+    if (!mounted) return;
     _startTimer();
-    context.showSnack('OTP sent again');
+    if (ok) {
+      context.showSnack('OTP sent again');
+    } else {
+      final error = ref.read(authProvider).error ?? 'Failed to resend OTP';
+      context.showSnack(error, isError: true);
+    }
   }
 
   @override

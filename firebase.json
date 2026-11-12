@@ -1,4 +1,19 @@
 {
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "functions": {
+    "source": "functions",
+    "codebase": "default",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "*.local"
+    ]
+  },
   "hosting": {
     "public": "build/web",
     "ignore": [
@@ -50,5 +65,26 @@
         ]
       }
     ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "mytick-app",
+          "appId": "1:323864835778:android:d8a74529c2ee15037cad5b",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "mytick-app",
+          "configurations": {
+            "android": "1:323864835778:android:d8a74529c2ee15037cad5b",
+            "ios": "1:323864835778:ios:1d4a348a78565d997cad5b",
+            "web": "1:323864835778:web:abbb4ba842a846c07cad5b"
+          }
+        }
+      }
+    }
   }
 }

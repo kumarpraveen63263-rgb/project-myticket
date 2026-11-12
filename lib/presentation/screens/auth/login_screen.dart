@@ -13,7 +13,7 @@ import '../../widgets/common/app_button.dart';
 import '../../widgets/common/app_text_field.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  LoginScreen({super.key});
+  const LoginScreen({super.key});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -142,10 +142,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _socialButton(Icons.g_mobiledata_rounded, 'Google'),
+                    child: _googleButton(),
                   ),
                   SizedBox(width: AppDimensions.paddingMedium),
-                  Expanded(child: _socialButton(Icons.apple_rounded, 'Apple')),
+                  Expanded(
+                    child: _socialButton(Icons.apple_rounded, 'Apple'),
+                  ),
                 ],
               ),
               SizedBox(height: AppDimensions.paddingXL),
@@ -180,10 +182,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
+  /// Real Google Sign-In button.
+  Widget _googleButton() {
+    return OutlinedButton.icon(
+      onPressed: _signInWithGoogle,
+      icon: Icon(Icons.g_mobiledata_rounded, color: AppColors.textPrimary),
+      label: Text(
+        'Google',
+        style: AppTypography.bodyMedium.copyWith(color: AppColors.textPrimary),
+      ),
+      style: OutlinedButton.styleFrom(
+        minimumSize: Size.fromHeight(AppDimensions.buttonHeightMedium),
+        side: BorderSide(color: AppColors.border),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+        ),
+      ),
+    );
+  }
+
+  /// Handles Google Sign-In flow.
+  Future<void> _signInWithGoogle() async {
+    final ok = await ref.read(authProvider.notifier).signInWithGoogle();
+    if (!mounted) return;
+    if (ok) {
+      context.go('/home');
+    } else {
+      final error = ref.read(authProvider).error;
+      if (error != null && !error.contains('cancelled')) {
+        context.showSnack(error, isError: true);
+      }
+    }
+  }
+
   Widget _socialButton(IconData icon, String label) {
     return OutlinedButton.icon(
       onPressed: () =>
-          context.showSnack('$label sign-in is not available in this demo'),
+          context.showSnack('$label sign-in coming soon!'),
       icon: Icon(icon, color: AppColors.textPrimary),
       label: Text(
         label,

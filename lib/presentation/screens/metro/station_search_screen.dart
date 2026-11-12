@@ -13,7 +13,7 @@ import '../../widgets/common/app_text_field.dart';
 import '../../widgets/metro/station_chip.dart';
 
 class StationSearchScreen extends ConsumerStatefulWidget {
-  StationSearchScreen({super.key});
+  const StationSearchScreen({super.key});
 
   @override
   ConsumerState<StationSearchScreen> createState() =>

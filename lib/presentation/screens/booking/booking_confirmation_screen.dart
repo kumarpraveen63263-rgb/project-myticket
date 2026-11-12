@@ -14,7 +14,7 @@ import '../../widgets/common/app_button.dart';
 import '../../widgets/ticket/digital_ticket_card.dart';
 
 class BookingConfirmationScreen extends ConsumerWidget {
-  BookingConfirmationScreen({super.key});
+  const BookingConfirmationScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -107,8 +107,11 @@ class BookingConfirmationScreen extends ConsumerWidget {
               label: context.tr('Share'),
               icon: Icons.share_rounded,
               variant: AppButtonVariant.ghost,
-              onPressed: () => Share.share(
-                'I just booked ${booking.title} on MyTickets! Booking ID: ${booking.bookingId}',
+              onPressed: () => SharePlus.instance.share(
+                ShareParams(
+                  text:
+                      'I just booked ${booking.title} on MyTickets! Booking ID: ${booking.bookingId}',
+                ),
               ),
             ),
             SizedBox(height: AppDimensions.paddingLarge),
